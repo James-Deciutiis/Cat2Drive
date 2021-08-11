@@ -15,8 +15,8 @@ A small website that will upload a random cat picture of a selected breed to you
 
 ## How to download and run
 
-1. Download from repository.
-2. Go to the project directory and in terminal run 'node index.js'.
-3. Open http://localhost:3000/ in your browser.
+1. Download from repository
+2. Go to the project directory and in terminal run 'node index.js'
+3. Open http://localhost:3000/ in your browser
 4. Follow instructions on website
 5. Enjoy Cats!

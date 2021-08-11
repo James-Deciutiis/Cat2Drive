@@ -1,0 +1,44 @@
+title Google Drive + The Cat API Mash up 3LO Auth 2.0.
+
+participant Google Drive API[A]
+participant Google Drive API[B]
+participant The Cat API[B]
+participant User
+participant Server
+
+User->(1)Server:Browser requests "/" (root of our site)
+Server->(1)User: Sends 200 Okay, Returns index.html (form)
+User->(1)Server:User fills out form (supplies data: **cat_breed**) \nBrowser requests "/create_cat_request" (root of our site)
+
+note over Server: Creates **state**\nSaves {cat_breed, state}
+
+Server->(1)User: Sends 302 Redirect to Drive + {ClientID, scope, state, redirect_uri, response_type} \nGo to Google Drive API to login and grant my Apps ClientID \nthe ability to interact with your personal Google Drive account \nunder limited scope rules (read, readwrite, delete etc...) \nstate is used to lookup your cat_breed on return
+
+alt This can be shortcircuited if the user is already logged in and has already granted permission
+User->(1)Google Drive API[A]:Browser sees 302, \nimmediately redirects to Google Drive API\nforwarding {ClientID, scope, state, redirect_uri, response_type} 
+Google Drive API[A]->(1)User:Sends login form
+User->(1)Google Drive API[A]:User logs in
+Google Drive API[A]->(1)User:Ask if you want to grant permission
+User->(1)Google Drive API[A]:User says yes
+end
+
+Google Drive API[A]->(1)User: 302 Redirect to our server + {code, state} \nCode represents the users \nexplicit permission for ClientID to\ninteract with this Users account \nunder scope guidelines.
+User->(1)Server:Browser receives 302, \nimmediately redirects to Our Server\nforwarding {code, state}
+
+note over Server: Uses **state** as key to lookup **cat_breed**
+
+Server->(1)Google Drive API[B]:Sends{client_id, client_secret, code, grant_type, redirect_uri} \nto get access token\nthe five components tell the API\n**clientid**: identifies the app\n(the app I wrote vs. the one you wrote \nused to track resource usage and \nin some scenarios used for billing)\n**clientsecret**: app's "password" \n**code**: representation of user's \npermission to interact with account \n**grant_type**: According to Google Drive API documentations this must be set to "authorization_code" when first getting the access token. \n**redirect_uri**: Set to the url to redirect too when user successfully authorizes our API (This must be the same as the previous one used for authorization of use of Drive by our sever)
+
+Google Drive API[B]->(1)Server:If everything checks out, we get an **access_token** back
+
+Server->(1)The Cat API[B]:API requests to get a cat picture based on the user_input (cat_breed): {cat_breed}\nGET `https://api.thecatapi.com/v1/images/search?breed_ids=${cat_breed}`
+
+The Cat API[B]->(1)Server:200 JSON cat object which including URL of cat image of the cat_breed
+
+Server->(1)The Cat API[B]: Checks the images URL to see if the cat image is already cached to the servers cat-image folder, if it is we can just directly send the cat image to Google Drive API... If not we send a GET request for cat image from URL recieved from JSON cat object then download the cat image, store it in the servers cat-image directory and send the new file to Google Drive API
+
+Server->(1)Google Drive API[A]: Upon recieving the cat image we either read the new image then send it to the Google Drive API \n POST "https://www.googleapis.com/upload/drive/v3/files"\n"Authorization": `Bearer ${access_token}`,\n"Content-Length": `${new_file.length}`, \n  "Content-Type": `${mime_type}` (image/${whatever image type is}\n then pass the image at the .end(new_image)\n IF the file was already in cache we skip reading the new file and just pass the cached image, so we skill the read new file step but the rest is the same. \n POST "https://www.googleapis.com/upload/drive/v3/files"\n"Authorization": `Bearer ${access_token}`,\n"Content-Length": `${cached_file.length}`, \n  "Content-Type": `${mime_type}`\n Then we pass our image at the end(cached_image)
+
+Google Drive API[A]->(1)User:200 OK, Uploads cute cat picture to users Google Drive (Catastic)
+
+
